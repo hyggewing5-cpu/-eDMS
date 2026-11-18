@@ -35,11 +35,25 @@ const SCHEMA = {
 
 /* ---------- Web app entry ---------- */
 function doGet() {
-  ensureSetup_();
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle(getSetting_('AppName') || 'eDMS')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  try { ensureSetup_(); } catch (e) {}
+  let page = null;
+  try { page = HtmlService.createHtmlOutputFromFile('Index'); } catch (e) {}
+  if (page) {
+    return page.setTitle(getSetting_('AppName') || 'eDMS')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+  // โหมด GitHub Pages: ไม่มีไฟล์ Index ใน Apps Script -> ตอบเป็น API health check
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, name: 'eDMS API', time: now_() }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+/** จุดรับ API จากหน้าเว็บบน GitHub Pages: body = {method, token, payload} */
+function doPost(e) {
+  let req = {};
+  try { req = JSON.parse(e.postData.contents); } catch (err) {}
+  try { ensureSetup_(); } catch (err) {}
+  return ContentService.createTextOutput(api(String(req.method || ''), req.token, req.payload))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /* ---------- Setup (รันครั้งแรกด้วยมือ 1 ครั้ง) ---------- */
